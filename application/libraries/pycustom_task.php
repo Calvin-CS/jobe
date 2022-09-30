@@ -17,7 +17,6 @@ class Pycustom_Task extends Task {
     public function __construct($filename, $input, $params) {
         parent::__construct($filename, $input, $params);
         $this->default_params['interpreterargs'] = array('-BESs');
-	$this->default_params
     }
 
     public static function getVersionCommand() {
