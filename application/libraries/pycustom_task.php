@@ -34,8 +34,7 @@ class Pycustom_Task extends Task {
 
 
     public function getExecutablePath() {
-        // depend on PATH being set appropriately in the environment.
-        return 'python';
+        return '/usr/local/lib/conda-wrap/python';
      }
 
 
