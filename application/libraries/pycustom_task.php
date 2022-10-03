@@ -20,7 +20,7 @@ class Pycustom_Task extends Task {
     }
 
     public static function getVersionCommand() {
-        return array('python --version', '/Python ([0-9._]*)/');
+        return array('/usr/local/lib/conda-wrap/python --version', '/Python ([0-9._]*)/');
     }
 
     // A default name for Python2 programs
