@@ -14,7 +14,6 @@
 require_once('application/libraries/resultobject.php');
 
 define('ACTIVE_USERS', 1);  // The key for the shared memory active users array
-define('MAX_RETRIES', 8);   // Maximum retries (1 secs per retry), waiting for free user account
 
 class OverloadException extends Exception {
 }
@@ -42,7 +41,7 @@ abstract class Task {
         'streamsize'    => 2,       // MB (for stdout/stderr)
         'cputime'       => 5,       // secs
         'memorylimit'   => 200,     // MB
-        'numprocs'      => 20,
+        'numprocs'      => 30,
         'compileargs'   => array(),
         'linkargs'      => array(),
         'interpreterargs' => array(),
@@ -61,22 +60,24 @@ abstract class Task {
         'numprocs'      => 5        // processes
     );
 
-    public $id;             // The task id - use the workdir basename
-    public $input;          // Stdin for this task
-    public $sourceFileName; // The name to give the source file
-    public $params;         // Request parameters
+    public string $id;             // The task id - use the workdir basename
+    public string $input;          // Stdin for this task
+    public string $sourceFileName; // The name to give the source file
+    public string $executableFileName;  // The name of the compiled (if necessary) executable
+    public array $params;          // Request parameters
 
-    public $userId = null;  // The user id (number counting from 0).
-    public $user;           // The corresponding user name (e.g. jobe01).
+    public ?int $userId = null;     // The user id (number counting from 0).
+    public ?string $user;           // The corresponding user name (e.g. jobe01).
 
-    public $cmpinfo = '';   // Output from compilation
-    public $time = 0;       // Execution time (secs)
-    public $memory = 0;     // Memory used (MB)
-    public $signal = 0;
-    public $stdout = '';    // Output from execution
-    public $stderr = '';
-    public $result = Task::RESULT_INTERNAL_ERR;  // Should get overwritten
-    public $workdir = '';   // The temporary working directory created in constructor
+    public string $cmpinfo = '';   // Output from compilation
+    public float $time = 0;       // Execution time (secs)
+    public int $memory = 0;     // Memory used (MB)
+    public int $signal = 0;
+    public string $stdout = '';    // Output from execution
+    public string $stderr = '';
+    public int $result = Task::RESULT_INTERNAL_ERR;  // Should get overwritten
+    public ?string $workdir = '';   // The temporary working directory created in constructor
+
 
     // ************************************************
     //   MAIN METHODS THAT HANDLE THE FLOW OF ONE JOB
@@ -205,6 +206,7 @@ abstract class Task {
         global $CI;
 
         $numUsers = $CI->config->item('jobe_max_users');
+        $jobe_wait_timeout = $CI->config->item('jobe_wait_timeout');
         $key = ftok(__FILE__,  TASK::PROJECT_KEY);
         $sem = sem_get($key);
         $user = -1;
@@ -235,7 +237,7 @@ abstract class Task {
             if ($user == $numUsers) {
                 $user = -1;
                 $retries += 1;
-                if ($retries <= MAX_RETRIES) {
+                if ($retries <= $jobe_wait_timeout) {
                     sleep(1);
                 } else {
                     throw new OverloadException();
@@ -346,10 +348,8 @@ abstract class Task {
         } else {
             $param = $default;
         }
-        // ** BUG ** The min_params_compile value is being applied even if
-        // this is not a compile. I'm reluctant to fix, however, as it may
-        // break existing questions with inappropriately low resource settings.
-        if ($param != 0 && array_key_exists($key, $this->min_params_compile) &&
+
+        if ($iscompile && $param != 0 && array_key_exists($key, $this->min_params_compile) &&
                 $this->min_params_compile[$key] > $param) {
             $param = $this->min_params_compile[$key];
         }
